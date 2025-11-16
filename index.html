@@ -3,68 +3,87 @@
 <head>
 <meta charset="UTF-8">
 <title>Battle Royale Prototype</title>
+
 <style>
     body {
         margin:0;
-        background:#0b0c14;
-        font-family: Arial;
+        background:#0d0f1a;
+        font-family:Arial;
+        overflow:hidden;
         color:white;
     }
 
     /* --- LOBBY --- */
     #lobby {
-        padding:20px;
+        padding:40px;
+    }
+    #lobby h1 {
+        font-size:40px;
+        margin-bottom:10px;
     }
     .mode-btn {
-        padding:10px 20px;
-        margin:5px;
-        background:#2a2d3a;
-        border:1px solid #555;
+        padding:12px 25px;
+        margin:6px;
+        background:#1d2233;
+        border:1px solid #666;
         cursor:pointer;
         display:inline-block;
+        border-radius:6px;
+    }
+    .mode-btn:hover {
+        background:#29314a;
     }
     #readyBtn {
-        margin-top:20px;
-        padding:15px 30px;
+        margin-top:30px;
+        padding:15px 40px;
+        font-size:24px;
         background:#00aaff;
+        border-radius:8px;
         cursor:pointer;
-        font-size:22px;
         display:inline-block;
     }
 
-    /* --- JEU --- */
+    /* --- GAME & MAP --- */
     #game {
         display:none;
-        background:#111;
+        width:100vw;
         height:100vh;
-        overflow:hidden;
         position:relative;
+        background:black;
+        overflow:hidden;
     }
+
     #map {
-        width:2000px;
-        height:2000px;
-        background:#2b923a;
+        width:3000px;
+        height:3000px;
+        background:#3ea34d;
         position:absolute;
-        top:0;
         left:0;
+        top:0;
     }
+
     .player {
-        width:20px;
-        height:20px;
+        width:30px;
+        height:30px;
         background:yellow;
+        border-radius:4px;
         position:absolute;
     }
+
     .zone {
         position:absolute;
-        border:3px solid #4affff;
+        border:4px solid #4affff;
         border-radius:50%;
+        pointer-events:none;
     }
+
     .chest {
-        width:20px;
-        height:20px;
+        width:25px;
+        height:25px;
         background:orange;
         border-radius:4px;
         position:absolute;
+        cursor:pointer;
     }
 
     #lootBox {
@@ -72,31 +91,33 @@
         bottom:20px;
         left:50%;
         transform:translateX(-50%);
-        padding:15px;
-        background:#0008;
+        background:#000a;
+        padding:15px 25px;
+        border-radius:8px;
         display:none;
+        font-size:20px;
     }
 </style>
 </head>
 
 <body>
 
-<!-- ------------------- LOBBY ------------------- -->
+<!-- LOBBY -->
 <div id="lobby">
     <h1>Battle Royale – Lobby</h1>
+    <h3>Sélection du mode :</h3>
 
-    <h3>Choisir le mode</h3>
-    <div class="mode-btn" onclick="setMode('Solo')">Solo</div>
-    <div class="mode-btn" onclick="setMode('Duo')">Duo</div>
-    <div class="mode-btn" onclick="setMode('Section')">Section</div>
+    <div class="mode-btn" onclick="selectMode('SOLO')">Solo</div>
+    <div class="mode-btn" onclick="selectMode('DUO')">Duo</div>
+    <div class="mode-btn" onclick="selectMode('SECTION')">Section</div>
 
-    <h3 id="modeLabel">Mode sélectionné : Solo</h3>
+    <h3 id="modeText">Mode choisi : Aucun</h3>
 
-    <div id="readyBtn" onclick="launchGame()">PRÊT !</div>
+    <div id="readyBtn" onclick="startGame()">PRÊT</div>
 </div>
 
 
-<!-- ------------------- GAME ------------------- -->
+<!-- GAME -->
 <div id="game">
     <div id="map"></div>
     <div id="lootBox"></div>
@@ -104,46 +125,73 @@
 
 
 <script>
-/* ------------------- VARIABLES ------------------- */
-let mode = "Solo";
-let player = { x:1000, y:1000, speed:4 };
-let keys = {};
-let zoneSize = 1800;
-let zonePhase = 1;
-let zoneDamage = 0;
-let maxPhase = 8;
+/* ------- LOBBY -------- */
 
+let selectedMode = "";
 
-/* ------------------- MODE SELECTION ------------------- */
-function setMode(m) {
-    mode = m;
-    document.getElementById("modeLabel").innerText = "Mode sélectionné : " + m;
+function selectMode(m) {
+    selectedMode = m;
+    document.getElementById("modeText").innerText = "Mode choisi : " + m;
 }
 
-/* ------------------- START GAME ------------------- */
-function launchGame() {
-    document.getElementById("lobby").style.display = "none";
-    document.getElementById("game").style.display = "block";
+function startGame() {
+    if(selectedMode === "") {
+        alert("Choisis un mode !");
+        return;
+    }
+    document.getElementById("lobby").style.display="none";
+    document.getElementById("game").style.display="block";
+
+    initGame();
+}
+
+
+/* ------- GAME INIT -------- */
+
+let player = {
+    x:1500,
+    y:1500,
+    speed:6,
+    el:null
+};
+
+let keys = {};
+
+let zoneSize = 2000;
+let zonePhase = 1;
+let maxPhase = 8;
+let zoneDamage = 1;
+
+let weapons = ["SCAR", "SPAS‑12", "FAMAS", "Pistolet", "SMG", "Sniper"];
+
+
+function initGame() {
+
+    document.onkeydown = e => keys[e.key.toLowerCase()] = true;
+    document.onkeyup   = e => keys[e.key.toLowerCase()] = false;
+
     spawnPlayer();
-    spawnChests(40);
-    startZoneShrink();
+    spawnChests(80);
+    startZone();
+
     gameLoop();
 }
 
-/* ------------------- PLAYER ------------------- */
+
+/* ------- PLAYER -------- */
+
 function spawnPlayer() {
-    let el = document.createElement("div");
-    el.className = "player";
-    document.getElementById("map").appendChild(el);
-    player.el = el;
+    let p = document.createElement("div");
+    p.className = "player";
+    document.getElementById("map").appendChild(p);
+    player.el = p;
 }
 
-/* ZQSD */
-document.addEventListener("keydown", e => keys[e.key.toLowerCase()] = true);
-document.addEventListener("keyup", e => keys[e.key.toLowerCase()] = false);
 
-/* ------------------- GAME LOOP ------------------- */
+/* ------- GAME LOOP -------- */
+
 function gameLoop() {
+
     if(keys["z"]) player.y -= player.speed;
     if(keys["s"]) player.y += player.speed;
     if(keys["q"]) player.x -= player.speed;
@@ -157,64 +205,70 @@ function gameLoop() {
     requestAnimationFrame(gameLoop);
 }
 
-/* ------------------- ZONE ------------------- */
-function startZoneShrink() {
-    let zone = document.createElement("div");
-    zone.id = "zone";
-    zone.className = "zone";
-    document.getElementById("map").appendChild(zone);
+
+/* ------- ZONE -------- */
+
+function startZone() {
+    let z = document.createElement("div");
+    z.id = "zone";
+    z.className = "zone";
+    document.getElementById("map").appendChild(z);
+
     updateZone();
 }
 
 function updateZone() {
     let z = document.getElementById("zone");
+
     z.style.width = zoneSize + "px";
     z.style.height = zoneSize + "px";
-    z.style.left = (1000 - zoneSize/2) + "px";
-    z.style.top =  (1000 - zoneSize/2) + "px";
+    z.style.left = (1500 - zoneSize/2) + "px";
+    z.style.top  = (1500 - zoneSize/2) + "px";
 
-    // Damage phases
     if(zonePhase <= 3) zoneDamage = 1;
     else if(zonePhase <= 5) zoneDamage = 2;
     else zoneDamage = 5;
 
     if(zonePhase < maxPhase) {
-        zoneSize -= 150;
+        zoneSize -= 250;
         zonePhase++;
-        setTimeout(updateZone, 10000);
+        setTimeout(updateZone, 8000);
     }
 }
 
 function checkZoneDamage() {
-    let d = distance(player.x, player.y, 1000, 1000);
+    let d = Math.sqrt(
+        (player.x - 1500)**2 +
+        (player.y - 1500)**2
+    );
+
     if(d > zoneSize/2) {
-        // Outside zone
-        console.log("YOU TAKE DAMAGE: ", zoneDamage);
+        console.log("Dégâts de zone : -" + zoneDamage);
     }
 }
 
-function distance(x1,y1,x2,y2) {
-    return Math.sqrt( (x1-x2)**2 + (y1-y2)**2 );
-}
 
-/* ------------------- CHESTS & LOOT ------------------- */
-let weapons = ["SCAR", "SPAS‑12", "FAMAS", "Pistolet", "SMG"];
+/* ------- CHESTS -------- */
 
 function spawnChests(n) {
     for(let i=0;i<n;i++) {
         let c = document.createElement("div");
         c.className = "chest";
-        c.style.left = Math.random()*1900 + "px";
-        c.style.top  = Math.random()*1900 + "px";
+        c.style.left = Math.random()*2950 + "px";
+        c.style.top  = Math.random()*2950 + "px";
         c.onclick = () => openChest(c);
         document.getElementById("map").appendChild(c);
     }
 }
 
+
 function openChest(c) {
     let loot = weapons[Math.floor(Math.random()*weapons.length)];
-    document.getElementById("lootBox").innerText = "Butin : " + loot;
-    document.getElementById("lootBox").style.display = "block";
+    let box = document.getElementById("lootBox");
+    box.innerText = "Trouvé : " + loot;
+    box.style.display = "block";
+    setTimeout(() => box.style.display="none", 1500);
+
     c.remove();
 }
 </script>
