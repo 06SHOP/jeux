@@ -73,6 +73,38 @@
             text-align: center;
             display: none;
         }
+        #lobby {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+        }
+        #lobby input {
+            padding: 10px;
+            border: none;
+            border-radius: 5px;
+            width: 200px;
+        }
+        #lobby button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            background-color: #4CAF50;
+            color: white;
+            cursor: pointer;
+        }
+        #lobby button:hover {
+            background-color: #45a049;
+        }
     </style>
 </head>
 <body>
@@ -90,9 +122,22 @@
                 <button id="restart-btn">Rejouer</button>
             </div>
         </div>
+        <div id="lobby">
+            <h2>Bienvenue dans le Lobby</h2>
+            <input type="text" id="player-name" placeholder="Entrez votre pseudo">
+            <button id="start-btn">Commencer la partie</button>
+        </div>
     </div>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script>
+        // Variables de jeu
+        let health = 100;
+        let ammo = 30;
+        let score = 0;
+        let currentWeapon = "SCAR";
+        let isGameOver = false;
+        let playerName = "";
+
         // Initialisation du jeu
         const scene = new THREE.Scene();
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -111,22 +156,23 @@
         directionalLight.position.set(10, 10, 10);
         scene.add(directionalLight);
 
-        // Joueur (cube vert)
-        const playerGeometry = new THREE.BoxGeometry(0.5, 1, 0.5);
+        // Sol avec texture
+        const groundGeometry = new THREE.PlaneGeometry(100, 100);
+        const groundMaterial = new THREE.MeshBasicMaterial({ color: 0x228B22 });
+        const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+        ground.rotation.x = -Math.PI / 2;
+        scene.add(ground);
+
+        // Joueur (humain simplifié)
+        const playerGeometry = new THREE.BoxGeometry(0.5, 1.5, 0.5);
         const playerMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
         const player = new THREE.Mesh(playerGeometry, playerMaterial);
         scene.add(player);
 
-        // Bots (cubes rouges)
+        // Bots (humains simplifiés)
         const bots = [];
-        const botGeometry = new THREE.BoxGeometry(0.5, 1, 0.5);
+        const botGeometry = new THREE.BoxGeometry(0.5, 1.5, 0.5);
         const botMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
-
-        // Variables de jeu
-        let health = 100;
-        let ammo = 30;
-        let score = 0;
-        let isGameOver = false;
 
         // Fonction pour ajouter un bot
         function addBot() {
@@ -144,7 +190,7 @@
 
         // Contrôles du joueur
         const keys = {
-            w: false, a: false, s: false, d: false, space: false
+            z: false, q: false, s: false, d: false, space: false
         };
 
         document.addEventListener('keydown', (e) => {
@@ -166,9 +212,9 @@
             requestAnimationFrame(animate);
 
             // Déplacement du joueur
-            if (keys.w) player.position.z -= 0.1;
+            if (keys.z) player.position.z -= 0.1;
             if (keys.s) player.position.z += 0.1;
-            if (keys.a) player.position.x -= 0.1;
+            if (keys.q) player.position.x -= 0.1;
             if (keys.d) player.position.x += 0.1;
 
             // Tir (barre d'espace)
@@ -257,8 +303,13 @@
             animate();
         });
 
-        // Démarrer le jeu
-        animate();
+        // Bouton pour commencer la partie
+        document.getElementById('start-btn').addEventListener('click', function() {
+            playerName = document.getElementById('player-name').value || "Joueur";
+            document.getElementById('lobby').style.display = 'none';
+            document.getElementById('score-display').textContent = `Score: ${score}`;
+            animate();
+        });
 
         // Gestion du redimensionnement
         window.addEventListener('resize', () => {
