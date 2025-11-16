@@ -137,6 +137,8 @@
         let currentWeapon = "SCAR";
         let isGameOver = false;
         let playerName = "";
+        let isInBus = true;
+        let busPosition = 0;
 
         // Initialisation du jeu
         const scene = new THREE.Scene();
@@ -163,16 +165,50 @@
         ground.rotation.x = -Math.PI / 2;
         scene.add(ground);
 
+        // Montagnes
+        const mountainGeometry = new THREE.BoxGeometry(10, 5, 10);
+        const mountainMaterial = new THREE.MeshBasicMaterial({ color: 0x8B4513 });
+        const mountain = new THREE.Mesh(mountainGeometry, mountainMaterial);
+        mountain.position.set(15, 2.5, 15);
+        scene.add(mountain);
+
+        // Bus
+        const busGeometry = new THREE.BoxGeometry(5, 2, 10);
+        const busMaterial = new THREE.MeshBasicMaterial({ color: 0x0000ff });
+        const bus = new THREE.Mesh(busGeometry, busMaterial);
+        bus.position.y = 2;
+        scene.add(bus);
+
         // Joueur (humain simplifié)
         const playerGeometry = new THREE.BoxGeometry(0.5, 1.5, 0.5);
         const playerMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
         const player = new THREE.Mesh(playerGeometry, playerMaterial);
+        player.position.y = 2;
         scene.add(player);
 
         // Bots (humains simplifiés)
         const bots = [];
         const botGeometry = new THREE.BoxGeometry(0.5, 1.5, 0.5);
         const botMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+
+        // Coffres
+        const chests = [];
+        const chestGeometry = new THREE.BoxGeometry(0.5, 0.5, 0.5);
+        const chestMaterial = new THREE.MeshBasicMaterial({ color: 0x8B4513 });
+
+        // Fonction pour ajouter un coffre
+        function addChest() {
+            const chest = new THREE.Mesh(chestGeometry.clone(), chestMaterial);
+            chest.position.x = (Math.random() - 0.5) * 50;
+            chest.position.z = (Math.random() - 0.5) * 50;
+            scene.add(chest);
+            chests.push(chest);
+        }
+
+        // Ajouter 5 coffres au début
+        for (let i = 0; i < 5; i++) {
+            addChest();
+        }
 
         // Fonction pour ajouter un bot
         function addBot() {
@@ -211,14 +247,29 @@
 
             requestAnimationFrame(animate);
 
+            // Déplacement du bus
+            if (isInBus) {
+                bus.position.x += 0.1;
+                player.position.x = bus.position.x;
+                player.position.z = bus.position.z;
+            }
+
+            // Sauter du bus
+            if (keys.space && isInBus) {
+                isInBus = false;
+                player.position.y = 2;
+            }
+
             // Déplacement du joueur
-            if (keys.z) player.position.z -= 0.1;
-            if (keys.s) player.position.z += 0.1;
-            if (keys.q) player.position.x -= 0.1;
-            if (keys.d) player.position.x += 0.1;
+            if (!isInBus) {
+                if (keys.z) player.position.z -= 0.1;
+                if (keys.s) player.position.z += 0.1;
+                if (keys.q) player.position.x -= 0.1;
+                if (keys.d) player.position.x += 0.1;
+            }
 
             // Tir (barre d'espace)
-            if (keys.space && ammo > 0) {
+            if (keys.space && ammo > 0 && !isInBus) {
                 ammo--;
                 document.getElementById('ammo-count').textContent = `Munitions: ${ammo}`;
 
@@ -238,6 +289,24 @@
                         addBot(); // Ajouter un nouveau bot
                         break;
                     }
+                }
+            }
+
+            // Vérifier si on ouvre un coffre
+            for (let i = 0; i < chests.length; i++) {
+                const chest = chests[i];
+                const distance = Math.sqrt(
+                    Math.pow(player.position.x - chest.position.x, 2) +
+                    Math.pow(player.position.z - chest.position.z, 2)
+                );
+
+                if (distance < 1) {
+                    scene.remove(chest);
+                    chests.splice(i, 1);
+                    ammo += 30;
+                    document.getElementById('ammo-count').textContent = `Munitions: ${ammo}`;
+                    addChest(); // Ajouter un nouveau coffre
+                    break;
                 }
             }
 
@@ -284,6 +353,7 @@
             health = 100;
             ammo = 30;
             score = 0;
+            isInBus = true;
             document.getElementById('health-bar').style.setProperty('--health', '100%');
             document.getElementById('ammo-count').textContent = `Munitions: ${ammo}`;
             document.getElementById('score-display').textContent = `Score: ${score}`;
@@ -295,9 +365,20 @@
             }
             bots.length = 0;
 
+            // Supprimer les anciens coffres
+            for (const chest of chests) {
+                scene.remove(chest);
+            }
+            chests.length = 0;
+
             // Ajouter de nouveaux bots
             for (let i = 0; i < 5; i++) {
                 addBot();
+            }
+
+            // Ajouter de nouveaux coffres
+            for (let i = 0; i < 5; i++) {
+                addChest();
             }
 
             animate();
