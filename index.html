@@ -11,18 +11,15 @@
             background-color: #1a1a1a;
             font-family: Arial, sans-serif;
         }
-
         #game-container {
             width: 100vw;
             height: 100vh;
             position: relative;
         }
-
         #game-canvas {
             width: 100%;
             height: 100%;
         }
-
         #ui {
             position: absolute;
             top: 0;
@@ -31,14 +28,12 @@
             height: 100%;
             pointer-events: none;
         }
-
         #player-info {
             position: absolute;
             bottom: 20px;
             left: 20px;
             color: white;
         }
-
         #health-bar {
             width: 200px;
             height: 20px;
@@ -46,7 +41,6 @@
             border-radius: 10px;
             overflow: hidden;
         }
-
         #health-bar::after {
             content: '';
             display: block;
@@ -56,28 +50,10 @@
             border-radius: 10px;
             transition: width 0.3s;
         }
-
         #ammo-count {
             margin-top: 10px;
             font-size: 16px;
         }
-
-        #inventory {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-
-        #weapon-icon {
-            width: 50px;
-            height: 50px;
-            background-color: #555;
-            border-radius: 5px;
-        }
-
         #score-display {
             position: absolute;
             top: 20px;
@@ -85,7 +61,6 @@
             color: white;
             font-size: 18px;
         }
-
         #game-over {
             position: absolute;
             top: 50%;
@@ -98,20 +73,6 @@
             text-align: center;
             display: none;
         }
-
-        #restart-btn {
-            margin-top: 20px;
-            padding: 10px 20px;
-            background-color: #4CAF50;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-        }
-
-        #restart-btn:hover {
-            background-color: #45a049;
-        }
     </style>
 </head>
 <body>
@@ -120,300 +81,190 @@
         <div id="ui">
             <div id="player-info">
                 <div id="health-bar"></div>
-                <div id="ammo-count">Armes: Pistolet</div>
-            </div>
-            <div id="inventory">
-                <div id="weapon-icon"></div>
+                <div id="ammo-count">Munitions: 30</div>
             </div>
             <div id="score-display">Score: 0</div>
             <div id="game-over">
-                <h2>Game Over!</h2>
-                <p>Votre score: <span id="final-score">0</span></p>
+                <h2>Game Over !</h2>
+                <p>Score final: <span id="final-score">0</span></p>
                 <button id="restart-btn">Rejouer</button>
             </div>
         </div>
     </div>
-
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script>
         // Initialisation du jeu
-        document.addEventListener('DOMContentLoaded', function() {
-            // Configuration de Three.js
-            const scene = new THREE.Scene();
-            const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-            const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('game-canvas') });
-            renderer.setSize(window.innerWidth, window.innerHeight);
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.getElementById('game-canvas').appendChild(renderer.domElement);
 
-            // Lumière
-            const light = new THREE.AmbientLight(0xffffff, 0.5);
-            scene.add(light);
-            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-            directionalLight.position.set(1, 1, 1);
-            scene.add(directionalLight);
+        // Position de la caméra
+        camera.position.y = 5;
+        camera.position.z = 10;
 
-            // Création du joueur
-            const playerGeometry = new THREE.BoxGeometry(1, 2, 1);
-            const playerMaterial = new THREE.MeshPhongMaterial({ color: 0x00ff00 });
-            const player = new THREE.Mesh(playerGeometry, playerMaterial);
-            scene.add(player);
+        // Lumière
+        const light = new THREE.AmbientLight(0xffffff, 0.5);
+        scene.add(light);
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        directionalLight.position.set(10, 10, 10);
+        scene.add(directionalLight);
 
-            // Positionnement de la caméra
-            camera.position.z = 5;
-            camera.position.y = 2;
+        // Joueur (cube vert)
+        const playerGeometry = new THREE.BoxGeometry(0.5, 1, 0.5);
+        const playerMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+        const player = new THREE.Mesh(playerGeometry, playerMaterial);
+        scene.add(player);
 
-            // Variables de jeu
-            let score = 0;
-            let health = 100;
-            let ammo = 30;
-            let isGameOver = false;
-            const bots = [];
-            const bullets = [];
+        // Bots (cubes rouges)
+        const bots = [];
+        const botGeometry = new THREE.BoxGeometry(0.5, 1, 0.5);
+        const botMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
 
-            // Gestion des contrôles
-            const controls = {
-                forward: false,
-                backward: false,
-                left: false,
-                right: false,
-                shoot: false
-            };
+        // Variables de jeu
+        let health = 100;
+        let ammo = 30;
+        let score = 0;
+        let isGameOver = false;
 
-            // Événements clavier
-            document.addEventListener('keydown', (e) => {
-                switch(e.key) {
-                    case 'w': controls.forward = true; break;
-                    case 's': controls.backward = true; break;
-                    case 'a': controls.left = true; break;
-                    case 'd': controls.right = true; break;
-                    case ' ': controls.shoot = true; break;
-                }
-            });
+        // Fonction pour ajouter un bot
+        function addBot() {
+            const bot = new THREE.Mesh(botGeometry.clone(), botMaterial);
+            bot.position.x = (Math.random() - 0.5) * 20;
+            bot.position.z = (Math.random() - 0.5) * 20;
+            scene.add(bot);
+            bots.push(bot);
+        }
 
-            document.addEventListener('keyup', (e) => {
-                switch(e.key) {
-                    case 'w': controls.forward = false; break;
-                    case 's': controls.backward = false; break;
-                    case 'a': controls.left = false; break;
-                    case 'd': controls.right = false; break;
-                    case ' ': controls.shoot = false; break;
-                }
-            });
+        // Ajouter 5 bots au début
+        for (let i = 0; i < 5; i++) {
+            addBot();
+        }
 
-            // Fonction pour mettre à jour l'interface
-            function updateUI() {
-                document.getElementById('health-bar').style.width = `${health}%`;
-                document.getElementById('ammo-count').textContent = `Munitions: ${ammo}`;
-                document.getElementById('score-display').textContent = `Score: ${score}`;
+        // Contrôles du joueur
+        const keys = {
+            w: false, a: false, s: false, d: false, space: false
+        };
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key.toLowerCase() in keys) {
+                keys[e.key.toLowerCase()] = true;
             }
+        });
 
-            // Fonction pour ajouter des bots
-            function addBot() {
-                const botGeometry = new THREE.BoxGeometry(1, 2, 1);
-                const botMaterial = new THREE.MeshPhongMaterial({ color: 0xff0000 });
-                const bot = new THREE.Mesh(botGeometry, botMaterial);
-
-                // Position aléatoire
-                bot.position.x = (Math.random() - 0.5) * 20;
-                bot.position.z = (Math.random() - 0.5) * 20;
-
-                // Comportement du bot
-                bot.update = function() {
-                    // Déplacement aléatoire
-                    this.position.x += (Math.random() - 0.5) * 0.1;
-                    this.position.z += (Math.random() - 0.5) * 0.1;
-
-                    // Rotation vers le joueur
-                    const direction = new THREE.Vector3();
-                    direction.subVectors(player.position, this.position).normalize();
-                    this.rotation.y = Math.atan2(direction.x, direction.z);
-
-                    // Tir aléatoire
-                    if (Math.random() < 0.01) {
-                        shootBotBullet(this);
-                    }
-                };
-
-                scene.add(bot);
-                bots.push(bot);
+        document.addEventListener('keyup', (e) => {
+            if (e.key.toLowerCase() in keys) {
+                keys[e.key.toLowerCase()] = false;
             }
+        });
 
-            // Fonction pour tirer une balle de bot
-            function shootBotBullet(bot) {
-                const bulletGeometry = new THREE.SphereGeometry(0.1, 8, 8);
-                const bulletMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
-                const bullet = new THREE.Mesh(bulletGeometry, bulletMaterial);
+        // Boucle de jeu
+        function animate() {
+            if (isGameOver) return;
 
-                bullet.position.copy(bot.position);
-                bullet.position.y += 1;
+            requestAnimationFrame(animate);
 
-                // Direction vers le joueur
-                const direction = new THREE.Vector3();
-                direction.subVectors(player.position, bot.position).normalize();
-                bullet.direction = direction;
+            // Déplacement du joueur
+            if (keys.w) player.position.z -= 0.1;
+            if (keys.s) player.position.z += 0.1;
+            if (keys.a) player.position.x -= 0.1;
+            if (keys.d) player.position.x += 0.1;
 
-                bullet.update = function() {
-                    this.position.addScaledByVector(this.direction, 0.2);
-
-                    // Vérification de la collision avec le joueur
-                    if (this.position.distanceTo(player.position) < 1.5) {
-                        health -= 10;
-                        updateUI();
-                        scene.remove(this);
-                        return false;
-                    }
-
-                    // Suppression si trop loin
-                    if (this.position.distanceTo(bot.position) > 20) {
-                        scene.remove(this);
-                        return false;
-                    }
-
-                    return true;
-                };
-
-                scene.add(bullet);
-                bullets.push(bullet);
-            }
-
-            // Fonction pour tirer une balle du joueur
-            function shootPlayerBullet() {
-                if (ammo <= 0) return;
-
-                const bulletGeometry = new THREE.SphereGeometry(0.1, 8, 8);
-                const bulletMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
-                const bullet = new THREE.Mesh(bulletGeometry, bulletMaterial);
-
-                bullet.position.copy(player.position);
-                bullet.position.y += 1;
-
-                // Direction de la caméra
-                const direction = new THREE.Vector3();
-                camera.getWorldDirection(direction);
-                bullet.direction = direction;
-
-                bullet.update = function() {
-                    this.position.addScaledByVector(this.direction, 0.2);
-
-                    // Vérification de la collision avec les bots
-                    for (let i = 0; i < bots.length; i++) {
-                        if (this.position.distanceTo(bots[i].position) < 1.5) {
-                            score += 10;
-                            updateUI();
-                            scene.remove(bots[i]);
-                            bots.splice(i, 1);
-                            scene.remove(this);
-                            return false;
-                        }
-                    }
-
-                    // Suppression si trop loin
-                    if (this.position.distanceTo(player.position) > 20) {
-                        scene.remove(this);
-                        return false;
-                    }
-
-                    return true;
-                };
-
-                scene.add(bullet);
-                bullets.push(bullet);
+            // Tir (barre d'espace)
+            if (keys.space && ammo > 0) {
                 ammo--;
-                updateUI();
-            }
+                document.getElementById('ammo-count').textContent = `Munitions: ${ammo}`;
 
-            // Fonction pour vérifier si le jeu est terminé
-            function checkGameOver() {
-                if (health <= 0 && !isGameOver) {
-                    isGameOver = true;
-                    document.getElementById('final-score').textContent = score;
-                    document.getElementById('game-over').style.display = 'block';
-                }
-            }
+                // Vérifier si on touche un bot
+                for (let i = 0; i < bots.length; i++) {
+                    const bot = bots[i];
+                    const distance = Math.sqrt(
+                        Math.pow(player.position.x - bot.position.x, 2) +
+                        Math.pow(player.position.z - bot.position.z, 2)
+                    );
 
-            // Boucle de jeu
-            function animate() {
-                if (isGameOver) return;
-
-                requestAnimationFrame(animate);
-
-                // Mouvements du joueur
-                if (controls.forward) player.position.z -= 0.1;
-                if (controls.backward) player.position.z += 0.1;
-                if (controls.left) player.position.x -= 0.1;
-                if (controls.right) player.position.x += 0.1;
-
-                // Tir du joueur
-                if (controls.shoot && ammo > 0) {
-                    shootPlayerBullet();
-                }
-
-                // Mise à jour des bots
-                for (let bot of bots) {
-                    bot.update();
-                }
-
-                // Mise à jour des balles
-                for (let i = bullets.length - 1; i >= 0; i--) {
-                    if (!bullets[i].update()) {
-                        bullets.splice(i, 1);
+                    if (distance < 1.5) {
+                        scene.remove(bot);
+                        bots.splice(i, 1);
+                        score += 10;
+                        document.getElementById('score-display').textContent = `Score: ${score}`;
+                        addBot(); // Ajouter un nouveau bot
+                        break;
                     }
                 }
-
-                // Mise à jour de la caméra
-                camera.lookAt(player.position);
-
-                // Vérification de la fin du jeu
-                checkGameOver();
-
-                renderer.render(scene, camera);
             }
 
-            // Ajout de bots initiaux
+            // Déplacement aléatoire des bots
+            for (const bot of bots) {
+                bot.position.x += (Math.random() - 0.5) * 0.1;
+                bot.position.z += (Math.random() - 0.5) * 0.1;
+
+                // Vérifier si le bot touche le joueur
+                const distance = Math.sqrt(
+                    Math.pow(player.position.x - bot.position.x, 2) +
+                    Math.pow(player.position.z - bot.position.z, 2)
+                );
+
+                if (distance < 1) {
+                    health -= 10;
+                    document.getElementById('health-bar').style.setProperty('--health', `${health}%`);
+
+                    if (health <= 0) {
+                        gameOver();
+                    }
+                }
+            }
+
+            // Mettre à jour la barre de vie
+            document.getElementById('health-bar').style.setProperty('--health', `${health}%`);
+
+            // Mettre à jour la caméra
+            camera.lookAt(player.position);
+
+            renderer.render(scene, camera);
+        }
+
+        // Fin de partie
+        function gameOver() {
+            isGameOver = true;
+            document.getElementById('final-score').textContent = score;
+            document.getElementById('game-over').style.display = 'block';
+        }
+
+        // Bouton de rejouer
+        document.getElementById('restart-btn').addEventListener('click', function() {
+            isGameOver = false;
+            health = 100;
+            ammo = 30;
+            score = 0;
+            document.getElementById('health-bar').style.setProperty('--health', '100%');
+            document.getElementById('ammo-count').textContent = `Munitions: ${ammo}`;
+            document.getElementById('score-display').textContent = `Score: ${score}`;
+            document.getElementById('game-over').style.display = 'none';
+
+            // Supprimer les anciens bots
+            for (const bot of bots) {
+                scene.remove(bot);
+            }
+            bots.length = 0;
+
+            // Ajouter de nouveaux bots
             for (let i = 0; i < 5; i++) {
                 addBot();
             }
 
-            // Bouton de rejouer
-            document.getElementById('restart-btn').addEventListener('click', function() {
-                // Réinitialisation du jeu
-                isGameOver = false;
-                health = 100;
-                ammo = 30;
-                score = 0;
-                document.getElementById('game-over').style.display = 'none';
-
-                // Suppression des anciens éléments
-                for (let bot of bots) {
-                    scene.remove(bot);
-                }
-                for (let bullet of bullets) {
-                    scene.remove(bullet);
-                }
-
-                bots.length = 0;
-                bullets.length = 0;
-
-                // Réinitialisation du joueur
-                player.position.set(0, 0, 0);
-
-                // Ajout de nouveaux bots
-                for (let i = 0; i < 5; i++) {
-                    addBot();
-                }
-
-                // Relancer la boucle de jeu
-                animate();
-            });
-
-            // Démarrer le jeu
             animate();
+        });
 
-            // Gestion du redimensionnement de la fenêtre
-            window.addEventListener('resize', function() {
-                camera.aspect = window.innerWidth / window.innerHeight;
-                camera.updateProjectionMatrix();
-                renderer.setSize(window.innerWidth, window.innerHeight);
-            });
+        // Démarrer le jeu
+        animate();
+
+        // Gestion du redimensionnement
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
         });
     </script>
 </body>
